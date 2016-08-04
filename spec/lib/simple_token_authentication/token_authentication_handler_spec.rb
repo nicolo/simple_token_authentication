@@ -346,6 +346,121 @@ describe 'Any class which includes SimpleTokenAuthentication::TokenAuthenticatio
         end
       end
     end
+
+    context 'when a custom alternative identifier was defined', identifiers_option: true do
+
+      before(:each) do
+        allow(@entity).to receive(:identifier).and_return(:phone_number)
+        allow(@entity).to receive(:alternative_identifier).and_return(:alt_id)
+      end
+
+      context 'when the Devise config. does not defines the identifier as a case-insentitive key' do
+
+        before(:each) do
+          allow(Devise).to receive_message_chain(:case_insensitive_keys, :include?)
+          .with(:alt_id).and_return(false)
+        end
+
+        context 'when a downcased identifier was provided' do
+
+          before(:each) do
+            allow(@entity).to receive(:get_identifier_from_params_or_headers)
+            .and_return(nil)
+            allow(@entity).to receive(:get_alternative_identifier_from_params_or_headers)
+            .and_return('abc123')
+          end
+
+          it 'returns the proper record if any' do
+            # let's say there is a record
+            record = double()
+            allow(@entity).to receive_message_chain(:model, :find_for_authentication)
+            .with(alt_id: 'abc123')
+            .and_return(record)
+
+            expect(subject.new.send(:find_record_from_identifier, @entity)).to eq record
+          end
+        end
+
+        context 'when a upcased identifier was provided' do
+
+          before(:each) do
+            allow(@entity).to receive(:get_identifier_from_params_or_headers)
+            .and_return(nil)
+            allow(@entity).to receive(:get_alternative_identifier_from_params_or_headers)
+            .and_return('abC123')
+          end
+
+          it 'does not return any record' do
+            # let's say there is a record...
+            record = double()
+            # ...whose identifier is downcased...
+            allow(@entity).to receive_message_chain(:model, :find_for_authentication)
+            .with(alt_id: 'abc123')
+            .and_return(record)
+            # ...not upcased
+            allow(@entity).to receive_message_chain(:model, :find_for_authentication)
+            .with(alt_id: 'abC123')
+            .and_return(nil)
+
+            expect(subject.new.send(:find_record_from_identifier, @entity)).to be_nil
+          end
+        end
+      end
+
+      context 'when the Devise config. defines the identifier as a case-insentitive key' do
+
+        before(:each) do
+          allow(Devise).to receive_message_chain(:case_insensitive_keys, :include?)
+          .with(:alt_id).and_return(true)
+        end
+
+        context 'and a downcased identifier was provided' do
+
+          before(:each) do
+            allow(@entity).to receive(:get_identifier_from_params_or_headers)
+            .and_return(nil)
+            allow(@entity).to receive(:get_alternative_identifier_from_params_or_headers)
+            .and_return('abc123')
+          end
+
+          it 'returns the proper record if any' do
+            # let's say there is a record
+            record = double()
+            allow(@entity).to receive_message_chain(:model, :find_for_authentication)
+            .with(alt_id: 'abc123')
+            .and_return(record)
+
+            expect(subject.new.send(:find_record_from_identifier, @entity)).to eq record
+          end
+        end
+
+        context 'and a upcased identifier was provided' do
+
+          before(:each) do
+            allow(@entity).to receive(:get_identifier_from_params_or_headers)
+            .and_return(nil)
+            allow(@entity).to receive(:get_alternative_identifier_from_params_or_headers)
+            .and_return('abC123')
+          end
+
+          it 'returns the proper record if any' do
+            # let's say there is a record...
+            record = double()
+            # ...whose identifier is downcased...
+            allow(@entity).to receive_message_chain(:model, :find_for_authentication)
+            allow(@entity).to receive_message_chain(:model, :find_for_authentication)
+            .with(alt_id: 'abc123')
+            .and_return(record)
+            # ...not upcased
+            allow(@entity).to receive_message_chain(:model, :find_for_authentication)
+            .with(alt_id: 'abC123')
+            .and_return(nil)
+
+            expect(subject.new.send(:find_record_from_identifier, @entity)).to eq record
+          end
+        end
+      end
+    end
   end
 
   describe 'and which supports the :before_filter hook', before_filter: true do

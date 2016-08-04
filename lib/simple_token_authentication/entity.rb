@@ -38,6 +38,16 @@ module SimpleTokenAuthentication
       end
     end
 
+    def alternative_identifier_header_name
+      return unless alternative_identifier
+      if SimpleTokenAuthentication.header_names["#{name_underscore}".to_sym].presence \
+        && identifier_header_name = SimpleTokenAuthentication.header_names["#{name_underscore}".to_sym][alternative_identifier]
+        identifier_header_name
+      else
+        "X-#{name_underscore.camelize}-#{alternative_identifier.to_s.camelize}"
+      end
+    end
+
     def token_param_name
       "#{name_underscore}_token".to_sym
     end
@@ -46,11 +56,23 @@ module SimpleTokenAuthentication
       "#{name_underscore}_#{identifier}".to_sym
     end
 
+    def alternative_identifier_param_name
+      return unless alternative_identifier
+      "#{name_underscore}_#{alternative_identifier}".to_sym
+    end
+
+
     def identifier
       if custom_identifier = SimpleTokenAuthentication.identifiers["#{name_underscore}".to_sym]
         custom_identifier.to_sym
       else
         :email
+      end
+    end
+
+    def alternative_identifier
+      if alt_identifier = SimpleTokenAuthentication.alternative_identifiers["#{name_underscore}".to_sym]
+        alt_identifier.to_sym
       end
     end
 
@@ -68,6 +90,14 @@ module SimpleTokenAuthentication
         controller.params[identifier_param_name] = identifer_param
       end
       controller.params[identifier_param_name]
+    end
+
+    def get_alternative_identifier_from_params_or_headers controller
+      # if the alternative identifier is not present among params, get it from headers
+      if identifer_param = controller.params[alternative_identifier_param_name].blank? && controller.request.headers[alternative_identifier_header_name]
+        controller.params[alternative_identifier_param_name] = identifer_param
+      end
+      controller.params[alternative_identifier_param_name]
     end
   end
 end

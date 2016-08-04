@@ -4,6 +4,7 @@ module SimpleTokenAuthentication
     mattr_reader   :fallback
     mattr_accessor :header_names
     mattr_accessor :identifiers
+    mattr_accessor :alternative_identifiers
     mattr_accessor :sign_in_token
     mattr_accessor :controller_adapters
     mattr_accessor :model_adapters
@@ -14,6 +15,7 @@ module SimpleTokenAuthentication
     @@fallback = :devise
     @@header_names = {}
     @@identifiers = {}
+    @@alternative_identifiers = {}
     @@sign_in_token = false
     @@controller_adapters = ['rails', 'rails_api', 'rails_metal']
     @@model_adapters = ['active_record', 'mongoid']

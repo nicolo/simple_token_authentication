@@ -164,6 +164,71 @@ describe SimpleTokenAuthentication::Entity do
     end
   end
 
+  describe '#alternative_identifier_header_name', protected: true, identifiers_option: true do
+
+    context 'when a custom alternative_identifier is not defined' do
+      it 'is a String' do
+        expect(@subject.alternative_identifier_header_name).to be_nil
+      end
+    end
+
+    context 'when a custom alternative_identifier is defined' do
+
+      before(:each) do
+        allow(SimpleTokenAuthentication).to receive(:alternative_identifiers).
+          and_return({ super_user: :alt_id })
+      end
+
+      it 'returns the default header name for that custom alternative_identifier' do
+        expect(@subject.alternative_identifier_header_name).to eq 'X-SuperUser-AltId'
+      end
+
+      context 'when a custom header name is defined for that custom identifer' do
+
+        it 'returns the custom header name for that custom alternative_identifier' do
+          allow(SimpleTokenAuthentication).to receive(:header_names).
+            and_return({ super_user: { alt_id: 'X-Custom' } })
+          expect(@subject.alternative_identifier_header_name).to eq 'X-Custom'
+        end
+      end
+    end
+  end
+
+
+  describe '#alternative_identifier_param_name', protected: true, identifiers_option: true do
+
+    context 'alternative identifier not definded' do
+      it 'returns nil' do
+        expect(@subject.alternative_identifier_param_name).to be_nil
+      end
+    end
+
+    context 'when a custom alternative_identifier is defined' do
+
+      it 'returns the custom param name for that alternative_identifier' do
+        allow(SimpleTokenAuthentication).to receive(:alternative_identifiers).
+          and_return({ super_user: 'alt_id' })
+        expect(@subject.alternative_identifier_param_name).to eq :super_user_alt_id
+      end
+    end
+  end
+
+  describe '#alternative_identifier', protected: true, identifiers_option: true do
+
+    it 'returns nil' do
+      expect(@subject.alternative_identifier).to be_nil
+    end
+
+    context 'when a custom identifier is defined' do
+
+      it 'returns the custom identifier' do
+        allow(SimpleTokenAuthentication).to receive(:alternative_identifiers).
+          and_return({ super_user: 'phone_number' })
+        expect(@subject.alternative_identifier).to eq :phone_number
+      end
+    end
+  end
+
   describe '#get_token_from_params_or_headers', protected: true do
 
     context 'when a token is present in params' do
@@ -239,16 +304,66 @@ describe SimpleTokenAuthentication::Entity do
     context 'when no identifier is present in params' do
 
       context 'and an identifier is present in the headers' do
-
         before(:each) do
           @controller = double()
           allow(@controller).to receive(:params).and_return({ super_user_email: '' })
           allow(@controller).to receive_message_chain(:request, :headers)
-                     .and_return({ 'X-SuperUser-Email' => 'bob@example.com' })
+            .and_return({ 'X-SuperUser-Email' => 'bob@example.com' })
         end
 
         it 'returns the headers identifier' do
           expect(@subject.get_identifier_from_params_or_headers(@controller)).to eq 'bob@example.com'
+        end
+      end
+    end
+  end
+
+  describe '#get_alternative_identifier_from_params_or_headers', protected: true do
+
+    context 'when an alternative identifier is present in params' do
+
+      before(:each) do
+        @controller = double()
+        allow(SimpleTokenAuthentication).to receive(:alternative_identifiers).
+          and_return({ super_user: :alt_id })
+        allow(@controller).to receive(:params).and_return({ super_user_alt_id: 'abc123' })
+      end
+
+      it 'returns that alternative_identifier (String)' do
+        expect(@subject.get_alternative_identifier_from_params_or_headers(@controller)).to be_instance_of String
+        expect(@subject.get_alternative_identifier_from_params_or_headers(@controller)).to eq 'abc123'
+      end
+
+      context 'and another alternative_identifier is present in the headers' do
+
+        before(:each) do
+          allow(@controller).to receive_message_chain(:request, :headers)
+                     .and_return({ 'X-SuperUser-AltId' => 'bob@example.com' })
+        end
+
+        it 'returns the params alternative_identifier' do
+          expect(@subject.get_alternative_identifier_from_params_or_headers(@controller)).to eq 'abc123'
+        end
+      end
+    end
+
+    context 'when no alternative identifier is present in params' do
+
+      context 'and an identifier is present in the headers' do
+
+        context 'alternative identifier defined' do
+          before(:each) do
+            @controller = double()
+            allow(SimpleTokenAuthentication).to receive(:alternative_identifiers).
+              and_return({ super_user: :alt_id })
+            allow(@controller).to receive(:params).and_return({ super_user_alt_id: '' })
+            allow(@controller).to receive_message_chain(:request, :headers)
+              .and_return({ 'X-SuperUser-AltId' => 'abc123' })
+          end
+
+          it 'returns the headers identifier' do
+            expect(@subject.get_alternative_identifier_from_params_or_headers(@controller)).to eq 'abc123'
+          end
         end
       end
     end

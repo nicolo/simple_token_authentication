@@ -54,12 +54,17 @@ module SimpleTokenAuthentication
 
     def find_record_from_identifier(entity)
       identifier_param_value = entity.get_identifier_from_params_or_headers(self).presence
+      identifier = entity.identifier
+      if !identifier_param_value && entity.alternative_identifier
+        identifier_param_value = entity.get_alternative_identifier_from_params_or_headers(self).presence
+        identifier = entity.alternative_identifier
+      end
 
-      identifier_param_value = integrate_with_devise_case_insensitive_keys(identifier_param_value, entity)
+      identifier_param_value = integrate_with_devise_case_insensitive_keys(identifier_param_value, identifier)
 
       # The finder method should be compatible with all the model adapters,
       # namely ActiveRecord and Mongoid in all their supported versions.
-      identifier_param_value && entity.model.find_for_authentication(entity.identifier => identifier_param_value)
+      identifier_param_value && entity.model.find_for_authentication(identifier => identifier_param_value)
     end
 
     # Private: Take benefit from Devise case-insensitive keys
@@ -69,8 +74,8 @@ module SimpleTokenAuthentication
     # identifier_value - the original identifier_value String
     #
     # Returns an identifier String value which case follows the Devise case-insensitive keys policy
-    def integrate_with_devise_case_insensitive_keys(identifier_value, entity)
-      identifier_value.downcase! if identifier_value && Devise.case_insensitive_keys.include?(entity.identifier)
+    def integrate_with_devise_case_insensitive_keys(identifier_value, identifier)
+      identifier_value.downcase! if identifier_value && Devise.case_insensitive_keys.include?(identifier)
       identifier_value
     end
 
